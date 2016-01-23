@@ -1,21 +1,29 @@
 package com.woods.jdbc.Utile;
 
 import java.lang.reflect.Field;
+import java.net.CookieHandler;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Created by lin on 2016/1/21.
+ *
  */
-public class BaseDao {
+public enum BaseDao {
+
+    /**
+     * 单例知识点
+     * http://note.youdao.com/share/?id=3a158788dd93151677f080c8a0798493&type=note
+     */
+    INSTANCE;
 
     /**
      * 通用查询方法
      * @param cl
      * @return
      */
-    public static List findAll(Class cl){
+    public List findAll(Class cl){
         List list = null;
         try {
             Class.forName("com.mysql.jdbc.Driver");
@@ -54,7 +62,7 @@ public class BaseDao {
      * @param id
      * @return
      */
-    public static List findById(Class cl, Integer id){
+    public List findById(Class cl, Integer id){
         List list = null;
         try {
             Class.forName("com.mysql.jdbc.Driver");
@@ -134,5 +142,43 @@ public class BaseDao {
         return flag;
     }
 
+    /**
+     * 通用更新方法
+     */
+    public boolean update(Object obj){
+        boolean flag = false;
+        Connection conn = null;
+        PreparedStatement ps = null;
+
+        Field[] fields = obj.getClass().getDeclaredFields();
+        conn = BaseConnection.getConnection();
+        //UPDATE ANIMALS SET NAME = ?, AGE = ?, TID = ? WHERE ID = ?
+        StringBuffer sb = new StringBuffer("UPDATE " + obj.getClass().getSimpleName() + " SET ");
+        for (int i = 1; i < fields.length; i++) {
+            fields[i].setAccessible(true);
+            sb.append(fields[i].getName() + " = ?");
+            if(i < fields.length -1){
+                sb.append(" , ");
+            }
+        }
+        sb.append(" WHERE " + fields[0].getName() + " = ?");
+        try {
+            ps = conn.prepareStatement(sb.toString());
+            for (int i = 1; i < fields.length; i++) {
+                fields[i].setAccessible(true);
+                ps.setObject(i, fields[i].get(obj));
+                if (i + 1 == fields.length) {
+                    ps.setObject(i + 1, fields[0].get(obj));
+                }
+            }
+            int i = ps.executeUpdate();
+            flag = i > 0 ? true : false;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+        return flag;
+    }
 
 }
